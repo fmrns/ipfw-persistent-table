@@ -9,13 +9,13 @@
 1. make the script runnable.
   e.g.
 ```
-chown root    /usr/local/sbin/ipfw-persistent-table`
-chmod u+x,go= /usr/local/sbin/ipfw-persistent-table`
+chown root    /usr/local/sbin/ipfw-persistent-table
+chmod u+x,go= /usr/local/sbin/ipfw-persistent-table
 ```
 1. add the script to firewall_coscripts in rc.conf.
  e.g.
 ```
-firewall_coscripts="/usr/local/sbin/ipfw-persistent-table"`
+firewall_coscripts="/usr/local/sbin/ipfw-persistent-table"
 ```
 
 ## manual load, and save.
