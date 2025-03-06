@@ -1,0 +1,89 @@
+#!/bin/sh
+#
+# Copyright (c) 2025 Abacus Technologies, Inc.
+# Copyright (c) 2025 Fumiyuki Shimizu
+#
+# MIT License: https://opensource.org/license/mit
+#
+
+PATH=/bin:/sbin:/usr/bin:/usr/sbin
+
+DBDIR=/var/db/ipfw
+
+[ -r /etc/rc.conf ] && . /etc/rc.conf
+IPFW_CONF=/etc/rc.conf
+[ -r "$firewall_type" ] && IPFW_CONF="$firewall_type"
+
+umask 077
+mkdir -p "$DBDIR"
+chown root:wheel "$DBDIR"
+chmod u=x,go=    "$DBDIR"
+
+BN=$(basename "$0")
+TMPD=$(mktemp -d /tmp/."$BN".XXXXXXXXXXX)
+[ -n "$TMPD" -a -d "$TMPD" ] || { echo 'Cannot create a temporary directory.'; exit 1; }
+chmod go= "$TMPD"
+rc=1
+cleanup () {
+  rm -rf "$TMPD"
+  exit $rc
+}
+trap 'cleanup' EXIT TERM
+TMP1=$(mktemp "$TMPD/.$BN.XXXXXXXXXX" || { echo 'Cannot create a temporary file.' 1>&2; exit 1; })
+# update if older than 26minites.
+touch -A -002600 "$TMP1"
+
+
+table_load () {
+  [ -r "$2" -a -s "$2" ] && 
+    xargs --max-procs 100 -L 1 ipfw table "$1" add <"$2" >/dev/null 2>&1
+}
+
+table_save () {
+  local TMP2
+  TMP2=$(mktemp "$TMPD/.$BN.XXXXXXXXXX" || { echo 'Cannot create a temporary file.' 1>&2; exit 1; })
+  ipfw table "$1" list | sort -n >"$TMP2"
+  if diff -qaw "$2" "$TMP2" >/dev/null 2>&1; then
+    touch "$2"
+    rm -f "$TMP2"
+  else
+    mv -f "$2.0" "$2.1" >/dev/null 2>&1
+    mv -f "$2"   "$2.0" >/dev/null 2>&1
+    mv -f "$TMP2" "$2"
+  fi
+}
+
+
+#ipfw table all info |
+#sed -n -E -e 's/^--- table\(([^)]+)\).*$/\1/p' |
+ipfw table all info | sed -e 's/ ---$//' | tr '\n' '\t' | sed -e 's/\t---/\n---/g' |
+sed -E -e 's/^.* table\(([^)]+)\).* items: ([0-9]+),.*$/\2 \1/' | sort -n | cut -d \  -f 2 |
+while read -r tbl; do
+  t="$DBDIR/$tbl"
+  case "$1" in
+  quietstart|load)
+    table_load "$tbl" "$t"
+    ;;
+  quietstop|save)
+    table_save "$tbl" "$t"
+    ;;
+  cron)
+    if [ -r "$t" -a "$t" -ot "$IPFW_CONF" ]; then
+      # possible reset of the rules. load the previous data.
+      table_load "$tbl" "$t"
+      table_save "$tbl" "$t"
+    elif [ ! -r "$t" -o "$t" -ot "$TMP1" ]; then
+      table_save "$tbl" "$t"
+    fi
+    ;;
+  *)
+    echo "*** error: $(basename $0): Unknown command: [$*]"
+    echo "  usage: $0 [load|save]"
+    exit 1
+    ;;
+  esac
+done
+
+exit 0
+
+# end of file
