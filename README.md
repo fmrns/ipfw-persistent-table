@@ -6,13 +6,13 @@
 
 ## autosave on shutdown and load on startup
 
-1. make the script runnable.
+- make the script runnable.
   e.g.
 ```
 chown root    /usr/local/sbin/ipfw-persistent-table
 chmod u+x,go= /usr/local/sbin/ipfw-persistent-table
 ```
-1. add the script to firewall_coscripts in rc.conf.
+- add the script to firewall_coscripts in rc.conf.
  e.g.
 ```
 firewall_coscripts="/usr/local/sbin/ipfw-persistent-table"
@@ -25,7 +25,7 @@ firewall_coscripts="/usr/local/sbin/ipfw-persistent-table"
 
 ## call via cron, to update current tables.
 
-1. put the line to call this script, such as
+- put the line to call this script, such as
 ```
 */30 * * * * root /usr/local/sbin/ipfw-persistent-table cron
 ```
